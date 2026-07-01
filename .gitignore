@@ -2,7 +2,7 @@
 Secrets.xcconfig
 
 # Xcode user-specific files
-xcuserdata/
+**/xcuserdata/
 *.xcuserstate
 
 # macOS
