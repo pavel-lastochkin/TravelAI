@@ -14,6 +14,11 @@ struct ExplorePlaceView: View {
     @State private var isLoading = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var previewImage: UIImage?
+    @State private var showCamera = false
+
+    private var isCameraAvailable: Bool {
+        UIImagePickerController.isSourceTypeAvailable(.camera)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -25,11 +30,31 @@ struct ExplorePlaceView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
             }
 
-            PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                Text("Choose Photo")
+            HStack {
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    Text("Choose Photo")
+                }
+                .buttonStyle(.bordered)
+                .disabled(isLoading)
+
+                Button("Take Photo") {
+                    showCamera = true
+                }
+                .buttonStyle(.bordered)
+                .disabled(isLoading || !isCameraAvailable)
             }
-            .buttonStyle(.bordered)
-            .disabled(isLoading)
+
+            if !isCameraAvailable {
+                Text("Camera is not available on this device.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button("Analyze Photo") {
+                analyzePhoto()
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isLoading || previewImage == nil)
 
             TextField("Place name", text: $placeName)
                 .textFieldStyle(.roundedBorder)
@@ -50,6 +75,12 @@ struct ExplorePlaceView: View {
         .padding()
         .navigationTitle("Explore")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showCamera) {
+            ImagePicker(sourceType: .camera) { image in
+                previewImage = image
+            }
+            .ignoresSafeArea()
+        }
         .onChange(of: selectedPhoto) { _, newItem in
             Task {
                 guard let newItem else {
@@ -63,6 +94,17 @@ struct ExplorePlaceView: View {
                     previewImage = nil
                 }
             }
+        }
+    }
+
+    private func analyzePhoto() {
+        guard let previewImage else { return }
+
+        isLoading = true
+        Task {
+            let result = await analyzePlace(image: previewImage)
+            response = result
+            isLoading = false
         }
     }
 

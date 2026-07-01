@@ -6,28 +6,44 @@
 //
 
 import Foundation
+import UIKit
 
 func askGemini(place: String) async -> String {
-    guard let apiKey = Bundle.main.object(forInfoDictionaryKey: "GEMINI_API_KEY") as? String,
-          !apiKey.isEmpty,
-          apiKey != "YOUR_GEMINI_API_KEY_HERE",
-          !apiKey.hasPrefix("$(") else {
-        return "Error: Add your Gemini API key to Secrets.xcconfig, then clean build (Product → Clean Build Folder)."
+    let prompt = "Tell me briefly about \(place) as a travel destination."
+    return await generateContent(parts: [["text": prompt]])
+}
+
+func analyzePlace(image: UIImage) async -> String {
+    guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
+        return "Error: Could not process image."
     }
 
-   // guard apiKey.hasPrefix("AIza") else {
-   //     return "Error: Invalid API key format. Create a key at aistudio.google.com/apikey — it should start with \"AIza\"."
-   // }
+    let prompt = "Identify this place. If it's a landmark, return its name and a short description for tourists."
+    return await generateContent(parts: [
+        ["text": prompt],
+        [
+            "inline_data": [
+                "mime_type": "image/jpeg",
+                "data": jpegData.base64EncodedString(),
+            ],
+        ],
+    ])
+}
+
+private func generateContent(parts: [[String: Any]]) async -> String {
+    let apiKey = Configuration.geminiAPIKey
+    guard !apiKey.isEmpty else {
+        return "Error: Add your Gemini API key to Secrets.xcconfig, then clean build (Product → Clean Build Folder)."
+    }
 
     guard let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent") else {
         return "Error: Invalid API URL."
     }
 
-    let prompt = "Tell me briefly about \(place) as a travel destination."
     let body: [String: Any] = [
         "contents": [
-            ["parts": [["text": prompt]]]
-        ]
+            ["parts": parts],
+        ],
     ]
 
     var request = URLRequest(url: url)
