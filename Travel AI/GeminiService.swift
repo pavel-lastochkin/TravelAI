@@ -13,7 +13,7 @@ enum GeminiServiceError: LocalizedError {
     case invalidURL
     case invalidImage
     case invalidResponse
-    case apiError(String)
+    case apiError
     case emptyResponse
     case jsonParsingFailed(rawResponse: String)
 
@@ -27,8 +27,8 @@ enum GeminiServiceError: LocalizedError {
             return "Could not process the selected image."
         case .invalidResponse:
             return "Invalid server response."
-        case .apiError(let message):
-            return message
+        case .apiError:
+            return "Something went wrong while analyzing the photo. Please try again."
         case .emptyResponse:
             return "No response from AI."
         case .jsonParsingFailed:
@@ -148,10 +148,11 @@ private func generateContent(parts: [[String: Any]]) async throws -> String {
 
     if httpResponse.statusCode != 200 {
         if let apiError = try? JSONDecoder().decode(GeminiErrorResponse.self, from: data) {
-            throw GeminiServiceError.apiError(apiError.error.message)
+            print("Gemini API error: \(apiError.error.message)")
+        } else if let body = String(data: data, encoding: .utf8) {
+            print("Gemini API error (HTTP \(httpResponse.statusCode)): \(body)")
         }
-        let body = String(data: data, encoding: .utf8) ?? "Unknown error"
-        throw GeminiServiceError.apiError("HTTP \(httpResponse.statusCode): \(body)")
+        throw GeminiServiceError.apiError
     }
 
     let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)

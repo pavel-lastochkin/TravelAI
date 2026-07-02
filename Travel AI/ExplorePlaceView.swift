@@ -9,8 +9,6 @@ import PhotosUI
 import SwiftUI
 
 struct ExplorePlaceView: View {
-    @State private var placeName = ""
-    @State private var textResponse = "AI response will appear here."
     @State private var recognitionResult: PlaceRecognitionResult?
     @State private var errorMessage: String?
     @State private var isLoading = false
@@ -24,11 +22,10 @@ struct ExplorePlaceView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 photoSection
                 photoActionsSection
                 analyzeSection
-                searchSection
                 resultSection
             }
             .padding(.horizontal, 20)
@@ -40,6 +37,7 @@ struct ExplorePlaceView: View {
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
                 previewImage = image
+                clearAnalysisState()
             }
             .ignoresSafeArea()
         }
@@ -47,13 +45,16 @@ struct ExplorePlaceView: View {
             Task {
                 guard let newItem else {
                     previewImage = nil
+                    clearAnalysisState()
                     return
                 }
                 if let data = try? await newItem.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
                     previewImage = image
+                    clearAnalysisState()
                 } else {
                     previewImage = nil
+                    clearAnalysisState()
                 }
             }
         }
@@ -67,21 +68,24 @@ struct ExplorePlaceView: View {
                     .resizable()
                     .scaledToFill()
                     .frame(maxWidth: .infinity)
-                    .frame(height: 260)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .frame(height: 280)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
             } else {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(Color(.secondarySystemGroupedBackground))
-                    .frame(height: 220)
+                    .frame(height: 240)
                     .overlay {
-                        VStack(spacing: 8) {
-                            Image(systemName: "photo")
-                                .font(.system(size: 36))
+                        VStack(spacing: 10) {
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 40))
                                 .foregroundStyle(.secondary)
-                            Text("No photo selected")
+                            Text("Add a photo to identify a landmark")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
                         }
+                        .padding(.horizontal, 24)
                     }
             }
         }
@@ -90,23 +94,25 @@ struct ExplorePlaceView: View {
 
     private var photoActionsSection: some View {
         VStack(spacing: 12) {
-            PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                Label("Choose Photo", systemImage: "photo.on.rectangle")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .disabled(isLoading)
+            HStack(spacing: 12) {
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    Label("Gallery", systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(isLoading)
 
-            Button {
-                showCamera = true
-            } label: {
-                Label("Take Photo", systemImage: "camera")
-                    .frame(maxWidth: .infinity)
+                Button {
+                    showCamera = true
+                } label: {
+                    Label("Camera", systemImage: "camera")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(isLoading || !isCameraAvailable)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .disabled(isLoading || !isCameraAvailable)
 
             if !isCameraAvailable {
                 Text("Camera is not available on this device.")
@@ -129,58 +135,39 @@ struct ExplorePlaceView: View {
         .disabled(isLoading || previewImage == nil)
     }
 
-    private var searchSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Search by Name")
-                .font(.headline)
-
-            TextField("Place name", text: $placeName)
-                .textFieldStyle(.roundedBorder)
-                .disabled(isLoading)
-
-            Button {
-                askAI()
-            } label: {
-                Label("Ask AI", systemImage: "sparkles")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(isLoading || placeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-        }
-    }
-
     @ViewBuilder
     private var resultSection: some View {
         if isLoading {
-            VStack(spacing: 12) {
+            VStack(spacing: 14) {
                 ProgressView()
-                Text("Thinking...")
+                    .controlSize(.large)
+                Text("Detecting landmark...")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 24)
+            .padding(.vertical, 32)
         } else if let errorMessage {
-            InfoCard(
-                title: "Error",
-                value: errorMessage,
-                systemImage: "exclamationmark.triangle"
-            )
-        } else if let recognitionResult {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Results")
-                    .font(.headline)
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.title3)
 
-                PlaceRecognitionResultView(result: recognitionResult)
+                Text(errorMessage)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-        } else if textResponse != "AI response will appear here." {
-            InfoCard(
-                title: "Response",
-                value: textResponse,
-                systemImage: "text.bubble"
-            )
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        } else if let recognitionResult {
+            ResultCardView(result: recognitionResult)
         }
+    }
+
+    private func clearAnalysisState() {
+        recognitionResult = nil
+        errorMessage = nil
     }
 
     private func analyzePhoto() {
@@ -188,6 +175,8 @@ struct ExplorePlaceView: View {
 
         isLoading = true
         errorMessage = nil
+        recognitionResult = nil
+
         Task {
             do {
                 recognitionResult = try await analyzePlace(image: previewImage)
@@ -195,19 +184,6 @@ struct ExplorePlaceView: View {
                 recognitionResult = nil
                 errorMessage = error.localizedDescription
             }
-            isLoading = false
-        }
-    }
-
-    private func askAI() {
-        let name = placeName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
-
-        isLoading = true
-        errorMessage = nil
-        recognitionResult = nil
-        Task {
-            textResponse = await askGemini(place: name)
             isLoading = false
         }
     }

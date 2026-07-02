@@ -12,10 +12,44 @@
 		A10000022FDEC0010000001 /* Secrets.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig.example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		16D33E952FF6B8B500D321D2 /* Exceptions for "docs" folder in "Travel AI" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				UI_GUIDELINES.md,
+			);
+			target = 162F24222FDEB52A00E8894D /* Travel AI */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		16D33E962FF6B8B500D321D2 /* Exceptions for "docs" folder in "Compile Sources" phase from "Travel AI" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 162F241F2FDEB52A00E8894D /* Sources */;
+			membershipExceptions = (
+				UI_GUIDELINES.md,
+			);
+		};
+/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		162F24252FDEB52A00E8894D /* Travel AI */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Travel AI";
+			sourceTree = "<group>";
+		};
+		16D33E912FF6B8B400D321D2 /* docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				16D33E952FF6B8B500D321D2 /* Exceptions for "docs" folder in "Travel AI" target */,
+				16D33E962FF6B8B500D321D2 /* Exceptions for "docs" folder in "Compile Sources" phase from "Travel AI" target */,
+			);
+			path = docs;
+			sourceTree = "<group>";
+		};
+		16D33E972FF6B93600D321D2 /* .cursor */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = .cursor;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -35,6 +69,8 @@
 			isa = PBXGroup;
 			children = (
 				162F24252FDEB52A00E8894D /* Travel AI */,
+				16D33E912FF6B8B400D321D2 /* docs */,
+				16D33E972FF6B93600D321D2 /* .cursor */,
 				A10000022FDEC0010000001 /* Secrets.xcconfig.example */,
 				A10000012FDEC0010000001 /* Secrets.xcconfig */,
 				162F24242FDEB52A00E8894D /* Products */,
@@ -66,6 +102,8 @@
 			);
 			fileSystemSynchronizedGroups = (
 				162F24252FDEB52A00E8894D /* Travel AI */,
+				16D33E912FF6B8B400D321D2 /* docs */,
+				16D33E972FF6B93600D321D2 /* .cursor */,
 			);
 			name = "Travel AI";
 			packageProductDependencies = (
