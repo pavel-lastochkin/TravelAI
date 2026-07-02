@@ -11,7 +11,9 @@ import SwiftUI
 struct Travel_AIApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            NavigationStack {
+                ExplorePlaceView()
+            }
         }
     }
 }
