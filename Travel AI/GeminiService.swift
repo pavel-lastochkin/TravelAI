@@ -8,18 +8,76 @@
 import Foundation
 import UIKit
 
-func askGemini(place: String) async -> String {
-    let prompt = "Tell me briefly about \(place) as a travel destination."
-    return await generateContent(parts: [["text": prompt]])
+enum GeminiServiceError: LocalizedError {
+    case missingAPIKey
+    case invalidURL
+    case invalidImage
+    case invalidResponse
+    case apiError(String)
+    case emptyResponse
+    case jsonParsingFailed(rawResponse: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingAPIKey:
+            return "Add your Gemini API key to Secrets.xcconfig, then clean build (Product → Clean Build Folder)."
+        case .invalidURL:
+            return "Invalid API URL."
+        case .invalidImage:
+            return "Could not process the selected image."
+        case .invalidResponse:
+            return "Invalid server response."
+        case .apiError(let message):
+            return message
+        case .emptyResponse:
+            return "No response from AI."
+        case .jsonParsingFailed:
+            return "Could not read the AI response. Please try again."
+        }
+    }
 }
 
-func analyzePlace(image: UIImage) async -> String {
+func askGemini(place: String) async -> String {
+    let prompt = "Tell me briefly about \(place) as a travel destination."
+    do {
+        return try await generateContent(parts: [["text": prompt]])
+    } catch {
+        return "Error: \(error.localizedDescription)"
+    }
+}
+
+func analyzePlace(image: UIImage) async throws -> PlaceRecognitionResult {
     guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
-        return "Error: Could not process image."
+        throw GeminiServiceError.invalidImage
     }
 
-    let prompt = "Identify this place. If it's a landmark, return its name and a short description for tourists."
-    return await generateContent(parts: [
+    let prompt = """
+    You are an expert travel guide.
+
+    Analyze the uploaded image.
+
+    If you recognize the place, return ONLY valid JSON in exactly this format:
+
+    {
+    "placeName": "",
+    "city": "",
+    "country": "",
+    "confidence": 0,
+    "description": "",
+    "interestingFact": ""
+    }
+
+    Rules:
+
+    * Return ONLY JSON.
+    * No markdown.
+    * No explanation.
+    * No code fences.
+    * confidence must be an integer from 0 to 100.
+    * If uncertain, lower confidence instead of guessing.
+    """
+
+    let rawResponse = try await generateContent(parts: [
         ["text": prompt],
         [
             "inline_data": [
@@ -28,16 +86,46 @@ func analyzePlace(image: UIImage) async -> String {
             ],
         ],
     ])
+
+    let jsonString = sanitizeJSONResponse(rawResponse)
+
+    do {
+        guard let data = jsonString.data(using: .utf8) else {
+            throw GeminiServiceError.jsonParsingFailed(rawResponse: rawResponse)
+        }
+        return try JSONDecoder().decode(PlaceRecognitionResult.self, from: data)
+    } catch {
+        print("Gemini JSON parsing failed. Raw response:\n\(rawResponse)")
+        throw GeminiServiceError.jsonParsingFailed(rawResponse: rawResponse)
+    }
 }
 
-private func generateContent(parts: [[String: Any]]) async -> String {
+private func sanitizeJSONResponse(_ text: String) -> String {
+    var cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    if cleaned.hasPrefix("```") {
+        cleaned = cleaned
+            .replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    if let start = cleaned.firstIndex(of: "{"),
+       let end = cleaned.lastIndex(of: "}") {
+        cleaned = String(cleaned[start...end])
+    }
+
+    return cleaned
+}
+
+private func generateContent(parts: [[String: Any]]) async throws -> String {
     let apiKey = Configuration.geminiAPIKey
     guard !apiKey.isEmpty else {
-        return "Error: Add your Gemini API key to Secrets.xcconfig, then clean build (Product → Clean Build Folder)."
+        throw GeminiServiceError.missingAPIKey
     }
 
     guard let url = URL(string: "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent") else {
-        return "Error: Invalid API URL."
+        throw GeminiServiceError.invalidURL
     }
 
     let body: [String: Any] = [
@@ -51,30 +139,26 @@ private func generateContent(parts: [[String: Any]]) async -> String {
     request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-    do {
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, urlResponse) = try await URLSession.shared.data(for: request)
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+    let (data, urlResponse) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = urlResponse as? HTTPURLResponse else {
-            return "Error: Invalid server response."
-        }
-
-        if httpResponse.statusCode != 200 {
-            if let apiError = try? JSONDecoder().decode(GeminiErrorResponse.self, from: data) {
-                return "Error: \(apiError.error.message)"
-            }
-            let body = String(data: data, encoding: .utf8) ?? "Unknown error"
-            return "Error (\(httpResponse.statusCode)): \(body)"
-        }
-
-        let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
-        guard let text = decoded.candidates.first?.content.parts.first?.text, !text.isEmpty else {
-            return "Error: No response from AI."
-        }
-        return text
-    } catch {
-        return "Error: \(error.localizedDescription)"
+    guard let httpResponse = urlResponse as? HTTPURLResponse else {
+        throw GeminiServiceError.invalidResponse
     }
+
+    if httpResponse.statusCode != 200 {
+        if let apiError = try? JSONDecoder().decode(GeminiErrorResponse.self, from: data) {
+            throw GeminiServiceError.apiError(apiError.error.message)
+        }
+        let body = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw GeminiServiceError.apiError("HTTP \(httpResponse.statusCode): \(body)")
+    }
+
+    let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
+    guard let text = decoded.candidates.first?.content.parts.first?.text, !text.isEmpty else {
+        throw GeminiServiceError.emptyResponse
+    }
+    return text
 }
 
 private struct GeminiResponse: Decodable {
