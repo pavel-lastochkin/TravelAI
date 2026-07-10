@@ -9,15 +9,8 @@ import Combine
 import CoreLocation
 import Foundation
 
-struct LocationCoordinate: Sendable, Equatable {
-    let latitude: Double
-    let longitude: Double
-}
-
 @MainActor
 final class LocationManager: NSObject, ObservableObject {
-    @Published private(set) var statusMessage = "Location unavailable — analyzing photo only"
-
     private let manager = CLLocationManager()
     private var locationContinuation: CheckedContinuation<CLLocation?, Never>?
     private var authorizationContinuation: CheckedContinuation<CLAuthorizationStatus, Never>?
@@ -26,7 +19,6 @@ final class LocationManager: NSObject, ObservableObject {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        updateStatusMessage(hasCoordinate: false)
     }
 
     func requestPermissionIfNeeded() {
@@ -34,27 +26,18 @@ final class LocationManager: NSObject, ObservableObject {
         manager.requestWhenInUseAuthorization()
     }
 
-    func currentCoordinateForAnalysis() async -> LocationCoordinate? {
-        guard CLLocationManager.locationServicesEnabled() else {
-            updateStatusMessage(hasCoordinate: false)
-            return nil
-        }
+    func cameraCaptureContext() async -> PhotoLocationContext? {
+        guard CLLocationManager.locationServicesEnabled() else { return nil }
 
         let status = await resolvedAuthorizationStatus()
-        guard status == .authorizedWhenInUse || status == .authorizedAlways else {
-            updateStatusMessage(hasCoordinate: false)
-            return nil
-        }
+        guard status == .authorizedWhenInUse || status == .authorizedAlways else { return nil }
 
-        guard let location = await requestSingleLocation() else {
-            updateStatusMessage(hasCoordinate: false)
-            return nil
-        }
+        guard let location = await requestSingleLocation() else { return nil }
 
-        updateStatusMessage(hasCoordinate: true)
-        return LocationCoordinate(
+        return PhotoLocationContext(
             latitude: location.coordinate.latitude,
-            longitude: location.coordinate.longitude
+            longitude: location.coordinate.longitude,
+            source: .cameraCapture
         )
     }
 
@@ -75,11 +58,6 @@ final class LocationManager: NSObject, ObservableObject {
         }
     }
 
-    private func updateStatusMessage(hasCoordinate: Bool) {
-        statusMessage = hasCoordinate
-            ? "Using current location for better recognition"
-            : "Location unavailable — analyzing photo only"
-    }
 }
 
 extension LocationManager: CLLocationManagerDelegate {

@@ -16,6 +16,8 @@ struct ExplorePlaceView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var previewImage: UIImage?
     @State private var showCamera = false
+    @State private var photoSource: PhotoSource?
+    @State private var photoLocationContext: PhotoLocationContext?
 
     private var isCameraAvailable: Bool {
         UIImagePickerController.isSourceTypeAvailable(.camera)
@@ -27,6 +29,9 @@ struct ExplorePlaceView: View {
                 photoSection
                 photoActionsSection
                 analyzeSection
+                if let photoLocationContext {
+                    PhotoLocationRowView(context: photoLocationContext)
+                }
                 resultSection
             }
             .padding(.horizontal, 20)
@@ -40,25 +45,42 @@ struct ExplorePlaceView: View {
         }
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
+                selectedPhoto = nil
                 previewImage = image
+                photoSource = .camera
+                photoLocationContext = nil
                 clearAnalysisState()
+
+                Task {
+                    let captureLocation = await locationManager.cameraCaptureContext()
+                    photoLocationContext = captureLocation
+                    #if DEBUG
+                    print("Selected image source: camera")
+                    print("Analysis location source: \(captureLocation.map { String(describing: $0.source) } ?? "none")")
+                    #endif
+                }
             }
             .ignoresSafeArea()
         }
         .onChange(of: selectedPhoto) { _, newItem in
             Task {
-                guard let newItem else {
-                    previewImage = nil
-                    clearAnalysisState()
-                    return
-                }
+                guard let newItem else { return }
+
+                clearSelectedImageState()
+                photoSource = .gallery
+
                 if let data = try? await newItem.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
                     previewImage = image
-                    clearAnalysisState()
+                    photoLocationContext = PhotoLocationReader.locationContext(from: newItem, imageData: data)
+                    #if DEBUG
+                    print("Selected image source: gallery")
+                    print("Gallery metadata found: \(photoLocationContext != nil)")
+                    print("Analysis location source: \(photoLocationContext.map { String(describing: $0.source) } ?? "none")")
+                    #endif
                 } else {
                     previewImage = nil
-                    clearAnalysisState()
+                    photoLocationContext = nil
                 }
             }
         }
@@ -139,10 +161,29 @@ struct ExplorePlaceView: View {
             .controlSize(.large)
             .disabled(isLoading || previewImage == nil)
 
-            Text(locationManager.statusMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let locationStatusText {
+                Text(locationStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var locationStatusText: String? {
+        guard let photoSource else { return nil }
+
+        switch photoSource {
+        case .gallery:
+            if photoLocationContext != nil {
+                return "Using photo location for better recognition"
+            }
+            return "Photo has no location data — analyzing image only"
+        case .camera:
+            if photoLocationContext != nil {
+                return "Using camera location for better recognition"
+            }
+            return "Location unavailable — analyzing image only"
         }
     }
 
@@ -181,6 +222,13 @@ struct ExplorePlaceView: View {
         errorMessage = nil
     }
 
+    private func clearSelectedImageState() {
+        previewImage = nil
+        photoLocationContext = nil
+        photoSource = nil
+        clearAnalysisState()
+    }
+
     private func analyzePhoto() {
         guard let previewImage else { return }
 
@@ -189,9 +237,17 @@ struct ExplorePlaceView: View {
         recognitionResult = nil
 
         Task {
-            let coordinate = await locationManager.currentCoordinateForAnalysis()
+            #if DEBUG
+            print("Selected image source: \(photoSource.map { String(describing: $0) } ?? "none")")
+            print("Analysis location source: \(photoLocationContext.map { String(describing: $0.source) } ?? "none")")
+            print("Analysis mode: \(photoLocationContext == nil ? "image-only" : "image + location")")
+            #endif
+
             do {
-                recognitionResult = try await analyzePlace(image: previewImage, coordinate: coordinate)
+                recognitionResult = try await analyzePlace(
+                    image: previewImage,
+                    location: photoLocationContext
+                )
             } catch {
                 recognitionResult = nil
                 errorMessage = error.localizedDescription

@@ -46,7 +46,7 @@ func askGemini(place: String) async -> String {
     }
 }
 
-func analyzePlace(image: UIImage, coordinate: LocationCoordinate? = nil) async throws -> PlaceRecognitionResult {
+func analyzePlace(image: UIImage, location: PhotoLocationContext? = nil) async throws -> PlaceRecognitionResult {
     guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
         throw GeminiServiceError.invalidImage
     }
@@ -57,18 +57,37 @@ func analyzePlace(image: UIImage, coordinate: LocationCoordinate? = nil) async t
     Analyze the uploaded image.
     """
 
-    if let coordinate {
-        prompt += """
+    if let location {
+        switch location.source {
+        case .photoMetadata:
+            prompt += """
 
 
-    The user is currently near:
-    Latitude: \(coordinate.latitude)
-    Longitude: \(coordinate.longitude)
+    The following coordinates come from the selected photo's original location metadata and likely represent where the photo was taken:
 
-    Use this location only as helpful context.
-    Do not assume the photo is from this location if the image suggests otherwise.
-    If uncertain, lower confidence instead of guessing.
+    Latitude: \(location.latitude)
+    Longitude: \(location.longitude)
+
+    Use these coordinates as supporting context when identifying the place.
+    Verify them against visible details in the image.
+    Do not identify a place based only on the coordinates.
+    If the image and location do not match, lower confidence instead of guessing.
     """
+        case .cameraCapture:
+            prompt += """
+
+
+    The following coordinates represent the device location when this photo was captured:
+
+    Latitude: \(location.latitude)
+    Longitude: \(location.longitude)
+
+    Use these coordinates as supporting context when identifying the place.
+    Verify them against visible details in the image.
+    Do not identify a place based only on the coordinates.
+    If the image and location do not match, lower confidence instead of guessing.
+    """
+        }
     }
 
     prompt += """

@@ -8,5 +8,7 @@
 	<string>Travel AI needs camera access to take photos of places.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Travel AI uses your location to improve landmark recognition.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Travel AI reads the selected photo and its capture location to improve landmark recognition.</string>
 </dict>
 </plist>
