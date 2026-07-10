@@ -9,6 +9,7 @@ import PhotosUI
 import SwiftUI
 
 struct ExplorePlaceView: View {
+    @StateObject private var locationManager = LocationManager()
     @State private var recognitionResult: PlaceRecognitionResult?
     @State private var errorMessage: String?
     @State private var isLoading = false
@@ -34,6 +35,9 @@ struct ExplorePlaceView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Explore")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            locationManager.requestPermissionIfNeeded()
+        }
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
                 previewImage = image
@@ -124,15 +128,22 @@ struct ExplorePlaceView: View {
     }
 
     private var analyzeSection: some View {
-        Button {
-            analyzePhoto()
-        } label: {
-            Label("Analyze Photo", systemImage: "sparkles")
-                .frame(maxWidth: .infinity)
+        VStack(spacing: 8) {
+            Button {
+                analyzePhoto()
+            } label: {
+                Label("Analyze Photo", systemImage: "sparkles")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(isLoading || previewImage == nil)
+
+            Text(locationManager.statusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(isLoading || previewImage == nil)
     }
 
     @ViewBuilder
@@ -178,8 +189,9 @@ struct ExplorePlaceView: View {
         recognitionResult = nil
 
         Task {
+            let coordinate = await locationManager.currentCoordinateForAnalysis()
             do {
-                recognitionResult = try await analyzePlace(image: previewImage)
+                recognitionResult = try await analyzePlace(image: previewImage, coordinate: coordinate)
             } catch {
                 recognitionResult = nil
                 errorMessage = error.localizedDescription

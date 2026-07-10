@@ -46,15 +46,33 @@ func askGemini(place: String) async -> String {
     }
 }
 
-func analyzePlace(image: UIImage) async throws -> PlaceRecognitionResult {
+func analyzePlace(image: UIImage, coordinate: LocationCoordinate? = nil) async throws -> PlaceRecognitionResult {
     guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
         throw GeminiServiceError.invalidImage
     }
 
-    let prompt = """
+    var prompt = """
     You are an expert travel guide.
 
     Analyze the uploaded image.
+    """
+
+    if let coordinate {
+        prompt += """
+
+
+    The user is currently near:
+    Latitude: \(coordinate.latitude)
+    Longitude: \(coordinate.longitude)
+
+    Use this location only as helpful context.
+    Do not assume the photo is from this location if the image suggests otherwise.
+    If uncertain, lower confidence instead of guessing.
+    """
+    }
+
+    prompt += """
+
 
     If you recognize the place, return ONLY valid JSON in exactly this format:
 
