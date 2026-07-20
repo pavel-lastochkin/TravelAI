@@ -32,24 +32,29 @@ struct ResultCardView: View {
 
             Divider()
 
-            Text(result.description)
+            if !result.quickFacts.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Quick Facts")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(result.quickFacts, id: \.self) { fact in
+                            Label(fact, systemImage: "sparkle")
+                                .font(.subheadline)
+                                .labelStyle(.titleAndIcon)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            Text(result.story)
                 .font(.body)
                 .fixedSize(horizontal: false, vertical: true)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Label("Did you know?", systemImage: "lightbulb.fill")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-
-                Text(result.interestingFact)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.tertiarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -65,8 +70,17 @@ struct ResultCardView: View {
             city: "Paris",
             country: "France",
             confidence: 95,
-            description: "An iconic iron lattice tower and symbol of Paris, offering panoramic views from its observation decks.",
-            interestingFact: "It was built for the 1889 World's Fair and was originally intended to be temporary."
+            quickFacts: [
+                "Stands 330 meters tall including its antenna.",
+                "Built for the 1889 World's Fair in Paris.",
+                "One of the most visited paid monuments in the world."
+            ],
+            story: "Notice how the iron lattice opens wider at the base and tightens as it rises. That lattice was meant for a temporary fairground attraction, yet it stayed because the city could not imagine the skyline without it. There is also a quieter story about how close the tower came to being dismantled after the fair ended.",
+            followUpQuestions: [
+                "Tell me more about its history",
+                "How can I visit it?",
+                "What else is worth seeing nearby?"
+            ]
         )
     )
     .padding()

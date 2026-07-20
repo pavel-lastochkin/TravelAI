@@ -46,73 +46,19 @@ func askGemini(place: String) async -> String {
     }
 }
 
-func analyzePlace(image: UIImage, location: PhotoLocationContext? = nil) async throws -> PlaceRecognitionResult {
+func analyzePlace(
+    image: UIImage,
+    location: PhotoLocationContext? = nil,
+    responseLanguage: String
+) async throws -> PlaceRecognitionResult {
     guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
         throw GeminiServiceError.invalidImage
     }
 
-    var prompt = """
-    You are an expert travel guide.
-
-    Analyze the uploaded image.
-    """
-
-    if let location {
-        switch location.source {
-        case .photoMetadata:
-            prompt += """
-
-
-    The following coordinates come from the selected photo's original location metadata and likely represent where the photo was taken:
-
-    Latitude: \(location.latitude)
-    Longitude: \(location.longitude)
-
-    Use these coordinates as supporting context when identifying the place.
-    Verify them against visible details in the image.
-    Do not identify a place based only on the coordinates.
-    If the image and location do not match, lower confidence instead of guessing.
-    """
-        case .cameraCapture:
-            prompt += """
-
-
-    The following coordinates represent the device location when this photo was captured:
-
-    Latitude: \(location.latitude)
-    Longitude: \(location.longitude)
-
-    Use these coordinates as supporting context when identifying the place.
-    Verify them against visible details in the image.
-    Do not identify a place based only on the coordinates.
-    If the image and location do not match, lower confidence instead of guessing.
-    """
-        }
-    }
-
-    prompt += """
-
-
-    If you recognize the place, return ONLY valid JSON in exactly this format:
-
-    {
-    "placeName": "",
-    "city": "",
-    "country": "",
-    "confidence": 0,
-    "description": "",
-    "interestingFact": ""
-    }
-
-    Rules:
-
-    * Return ONLY JSON.
-    * No markdown.
-    * No explanation.
-    * No code fences.
-    * confidence must be an integer from 0 to 100.
-    * If uncertain, lower confidence instead of guessing.
-    """
+    let prompt = PromptBuilder.analyzePlacePrompt(
+        location: location,
+        responseLanguage: responseLanguage
+    )
 
     let rawResponse = try await generateContent(parts: [
         ["text": prompt],

@@ -9,6 +9,7 @@ import PhotosUI
 import SwiftUI
 
 struct ExplorePlaceView: View {
+    @EnvironmentObject private var appSettings: AppSettings
     @StateObject private var locationManager = LocationManager()
     @State private var recognitionResult: PlaceRecognitionResult?
     @State private var errorMessage: String?
@@ -16,6 +17,7 @@ struct ExplorePlaceView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var previewImage: UIImage?
     @State private var showCamera = false
+    @State private var showSettings = false
     @State private var photoSource: PhotoSource?
     @State private var photoLocationContext: PhotoLocationContext?
 
@@ -23,25 +25,56 @@ struct ExplorePlaceView: View {
         UIImagePickerController.isSourceTypeAvailable(.camera)
     }
 
+    private var canIdentifyPlace: Bool {
+        previewImage != nil && !isLoading
+    }
+
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            VStack(alignment: .leading, spacing: 28) {
                 photoSection
-                photoActionsSection
-                analyzeSection
+                ExplorePhotoActionsView(
+                    selectedPhoto: $selectedPhoto,
+                    isLoading: isLoading,
+                    isCameraAvailable: isCameraAvailable,
+                    onCameraTap: { showCamera = true }
+                )
+                identifySection
                 if let photoLocationContext {
                     PhotoLocationRowView(context: photoLocationContext)
+                        .transition(.opacity)
                 }
-                resultSection
+                ExploreResultSectionView(
+                    isLoading: isLoading,
+                    errorMessage: errorMessage,
+                    recognitionResult: recognitionResult
+                )
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.vertical, 20)
+            .animation(.easeInOut(duration: 0.28), value: previewImage != nil)
+            .animation(.easeInOut(duration: 0.2), value: canIdentifyPlace)
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Explore")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Settings")
+            }
+        }
         .onAppear {
             locationManager.requestPermissionIfNeeded()
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(appSettings)
         }
         .sheet(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera) { image in
@@ -90,76 +123,27 @@ struct ExplorePlaceView: View {
     private var photoSection: some View {
         Group {
             if let previewImage {
-                Image(uiImage: previewImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 280)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+                ExplorePhotoPreviewCard(image: previewImage)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             } else {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-                    .frame(height: 240)
-                    .overlay {
-                        VStack(spacing: 10) {
-                            Image(systemName: "camera.viewfinder")
-                                .font(.system(size: 40))
-                                .foregroundStyle(.secondary)
-                            Text("Add a photo to identify a landmark")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.horizontal, 24)
-                    }
-            }
-        }
-        .accessibilityLabel(previewImage == nil ? "No photo selected" : "Selected photo preview")
-    }
-
-    private var photoActionsSection: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    Label("Gallery", systemImage: "photo.on.rectangle")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .disabled(isLoading)
-
-                Button {
-                    showCamera = true
-                } label: {
-                    Label("Camera", systemImage: "camera")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .disabled(isLoading || !isCameraAvailable)
-            }
-
-            if !isCameraAvailable {
-                Text("Camera is not available on this device.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                ExploreEmptyStateView()
+                    .transition(.opacity)
             }
         }
     }
 
-    private var analyzeSection: some View {
-        VStack(spacing: 8) {
+    private var identifySection: some View {
+        VStack(spacing: 10) {
             Button {
                 analyzePhoto()
             } label: {
-                Label("Analyze Photo", systemImage: "sparkles")
+                Label("Identify Place", systemImage: "location.viewfinder")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(isLoading || previewImage == nil)
+            .disabled(!canIdentifyPlace)
+            .opacity(canIdentifyPlace ? 1 : 0.55)
 
             if let locationStatusText {
                 Text(locationStatusText)
@@ -184,36 +168,6 @@ struct ExplorePlaceView: View {
                 return "Using camera location for better recognition"
             }
             return "Location unavailable — analyzing image only"
-        }
-    }
-
-    @ViewBuilder
-    private var resultSection: some View {
-        if isLoading {
-            VStack(spacing: 14) {
-                ProgressView()
-                    .controlSize(.large)
-                Text("Detecting landmark...")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 32)
-        } else if let errorMessage {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .font(.title3)
-
-                Text(errorMessage)
-                    .font(.subheadline)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        } else if let recognitionResult {
-            ResultCardView(result: recognitionResult)
         }
     }
 
@@ -246,7 +200,8 @@ struct ExplorePlaceView: View {
             do {
                 recognitionResult = try await analyzePlace(
                     image: previewImage,
-                    location: photoLocationContext
+                    location: photoLocationContext,
+                    responseLanguage: appSettings.resolvedAIResponseLanguageName
                 )
             } catch {
                 recognitionResult = nil
@@ -260,5 +215,6 @@ struct ExplorePlaceView: View {
 #Preview {
     NavigationStack {
         ExplorePlaceView()
+            .environmentObject(AppSettings())
     }
 }

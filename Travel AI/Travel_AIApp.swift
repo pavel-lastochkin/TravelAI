@@ -9,11 +9,14 @@ import SwiftUI
 
 @main
 struct Travel_AIApp: App {
+    @StateObject private var appSettings = AppSettings()
+
     var body: some Scene {
         WindowGroup {
             NavigationStack {
                 ExplorePlaceView()
             }
+            .environmentObject(appSettings)
         }
     }
 }

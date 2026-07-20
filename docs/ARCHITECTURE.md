@@ -26,8 +26,11 @@ Travel AI is an iOS application that identifies places from photos and provides 
 * city: String
 * country: String
 * confidence: Int (0–100)
-* description: String
-* interestingFact: String
+* quickFacts: [String] — exactly three short traveler-friendly facts
+* story: String — local-guide narrative (60–80 words; concrete, no brochure tone)
+* followUpQuestions: [String] — exactly three branches: history, visiting, nearby (not answered in initial response)
+
+Decoder accepts legacy `description`, `interestingFact`, and combined `location` fields.
 
 This is the single source of truth for AI output.
 
