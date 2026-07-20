@@ -30,8 +30,17 @@ Use structured cards:
 * Place Name (large, bold)
 * Location (secondary text)
 * Confidence (small badge)
-* Description (body text)
-* Interesting Fact (highlighted section)
+* Quick Facts (exactly three short lines)
+* Story (body text)
+
+Below the first result, show fixed continuation actions:
+
+* Learn the history
+* How to visit
+* See nearby
+
+Only one action section should be expanded at a time.
+Show a ProgressView inside the expanded section while content loads.
 
 ---
 

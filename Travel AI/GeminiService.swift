@@ -60,23 +60,56 @@ func analyzePlace(
         responseLanguage: responseLanguage
     )
 
-    let rawResponse = try await generateContent(parts: [
-        ["text": prompt],
-        [
-            "inline_data": [
-                "mime_type": "image/jpeg",
-                "data": jpegData.base64EncodedString(),
+    return try await decodeGeminiJSON(
+        parts: [
+            ["text": prompt],
+            [
+                "inline_data": [
+                    "mime_type": "image/jpeg",
+                    "data": jpegData.base64EncodedString(),
+                ],
             ],
-        ],
-    ])
+        ]
+    )
+}
 
+func fetchPlaceDetails(
+    place: PlaceRecognitionResult,
+    responseLanguage: String
+) async throws -> PlaceDetailContent {
+    let prompt = PromptBuilder.placeDetailsPrompt(
+        place: place,
+        responseLanguage: responseLanguage
+    )
+    return try await decodeGeminiJSON(parts: [["text": prompt]])
+}
+
+func fetchNearbyPlaces(
+    place: PlaceRecognitionResult,
+    location: PhotoLocationContext?,
+    responseLanguage: String
+) async throws -> NearbyPlacesResult {
+    let prompt = PromptBuilder.nearbyPlacesPrompt(
+        place: place,
+        location: location,
+        responseLanguage: responseLanguage
+    )
+    return try await decodeGeminiJSON(parts: [["text": prompt]])
+}
+
+private func decodeGeminiJSON<T: Decodable>(parts: [[String: Any]]) async throws -> T {
+    let rawResponse = try await generateContent(parts: parts)
     let jsonString = sanitizeJSONResponse(rawResponse)
 
     do {
         guard let data = jsonString.data(using: .utf8) else {
             throw GeminiServiceError.jsonParsingFailed(rawResponse: rawResponse)
         }
-        return try JSONDecoder().decode(PlaceRecognitionResult.self, from: data)
+        let decoded = try JSONDecoder().decode(T.self, from: data)
+        #if DEBUG
+        print("Gemini decoded \(String(describing: T.self)):\n\(jsonString)")
+        #endif
+        return decoded
     } catch {
         print("Gemini JSON parsing failed. Raw response:\n\(rawResponse)")
         throw GeminiServiceError.jsonParsingFailed(rawResponse: rawResponse)

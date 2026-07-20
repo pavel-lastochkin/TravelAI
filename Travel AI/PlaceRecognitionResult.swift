@@ -14,7 +14,6 @@ struct PlaceRecognitionResult: Decodable {
     let confidence: Int
     let quickFacts: [String]
     let story: String
-    let followUpQuestions: [String]
 
     var locationSummary: String {
         [city, country]
@@ -30,7 +29,6 @@ struct PlaceRecognitionResult: Decodable {
         case confidence
         case quickFacts
         case story
-        case followUpQuestions
         case description
         case interestingFact
     }
@@ -66,8 +64,6 @@ struct PlaceRecognitionResult: Decodable {
         } else {
             self.story = ""
         }
-
-        followUpQuestions = try container.decodeIfPresent([String].self, forKey: .followUpQuestions) ?? []
     }
 
     init(
@@ -76,8 +72,7 @@ struct PlaceRecognitionResult: Decodable {
         country: String,
         confidence: Int,
         quickFacts: [String],
-        story: String,
-        followUpQuestions: [String]
+        story: String
     ) {
         self.placeName = placeName
         self.city = city
@@ -85,7 +80,6 @@ struct PlaceRecognitionResult: Decodable {
         self.confidence = confidence
         self.quickFacts = quickFacts
         self.story = story
-        self.followUpQuestions = followUpQuestions
     }
 
     private static func decodeConfidence(from container: KeyedDecodingContainer<CodingKeys>) throws -> Int {

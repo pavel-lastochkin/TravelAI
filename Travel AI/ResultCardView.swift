@@ -75,12 +75,7 @@ struct ResultCardView: View {
                 "Built for the 1889 World's Fair in Paris.",
                 "One of the most visited paid monuments in the world."
             ],
-            story: "Notice how the iron lattice opens wider at the base and tightens as it rises. That lattice was meant for a temporary fairground attraction, yet it stayed because the city could not imagine the skyline without it. There is also a quieter story about how close the tower came to being dismantled after the fair ended.",
-            followUpQuestions: [
-                "Tell me more about its history",
-                "How can I visit it?",
-                "What else is worth seeing nearby?"
-            ]
+            story: "Notice how the iron lattice opens wider at the base and tightens as it rises. That lattice was meant for a temporary fairground attraction, yet it stayed because the city could not imagine the skyline without it. There is also a quieter story about how close the tower came to being dismantled after the fair ended."
         )
     )
     .padding()

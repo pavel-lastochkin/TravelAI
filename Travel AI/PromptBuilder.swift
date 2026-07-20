@@ -29,7 +29,7 @@ enum PromptBuilder {
 
         Goal:
 
-        Help the traveler quickly understand what they are looking at, become interested, and naturally want to continue the conversation.
+        Help the traveler quickly understand what they are looking at, become interested, and want to explore further.
 
         The first response must fit on a single iPhone screen.
         Avoid long articles, long historical timelines, and large paragraphs.
@@ -49,12 +49,7 @@ enum PromptBuilder {
         "",
         ""
         ],
-        "story": "",
-        "followUpQuestions": [
-        "",
-        "",
-        ""
-        ]
+        "story": ""
         }
 
         Section rules:
@@ -76,19 +71,12 @@ enum PromptBuilder {
         * Imagine the traveler is standing in front of the place right now.
         * Use concrete details and observations only.
         * Include one specific thing the traveler can notice right now while looking at the place.
-        * End with one unfinished story hook that makes the user want to ask for more history.
+        * End with one unfinished story hook that makes the user want to learn more history.
         * Do NOT repeat information already listed in quickFacts.
         * Do NOT use abstract marketing language.
         * Forbidden phrases and patterns: architectural wonder, symbol of ambition, spirit of innovation, luxury destination, breathtaking, unforgettable landmark, redefines what is possible, masterpiece of human achievement.
         * Never academic. Avoid listing dates. Avoid a history lesson.
-
-        4. Continue the conversation
-        * followUpQuestions must contain exactly three short natural questions.
-        * Use exactly these three branches, in this order:
-          1. more history about this place
-          2. how and what to visit here
-          3. what else to see nearby
-        * Do NOT answer the follow-up questions. Only suggest them.
+        * Do NOT suggest follow-up questions. The app provides fixed next actions.
 
         Style rules:
 
@@ -104,7 +92,133 @@ enum PromptBuilder {
         * No markdown.
         * No explanation.
         * No code fences.
-        * Write placeName, city, country, quickFacts, story, and followUpQuestions in \(responseLanguage).
+        * Write placeName, city, country, quickFacts, and story in \(responseLanguage).
+        """
+
+        return prompt
+    }
+
+    static func placeDetailsPrompt(
+        place: PlaceRecognitionResult,
+        responseLanguage: String
+    ) -> String {
+        """
+        You are an excellent local guide.
+
+        The traveler already received this first look at the place:
+
+        Place: \(place.placeName)
+        City: \(place.city)
+        Country: \(place.country)
+        Quick facts:
+        \(place.quickFacts.map { "- \($0)" }.joined(separator: "\n"))
+        Opening story:
+        \(place.story)
+
+        Now provide deeper content for two fixed app actions.
+        Return the response in \(responseLanguage).
+
+        Return ONLY valid JSON in exactly this format:
+
+        {
+        "history": "",
+        "visitInfo": ""
+        }
+
+        Rules for history:
+        * 100-150 words.
+        * Tell one concrete memorable story about this place.
+        * Do NOT repeat the quick facts or opening story.
+        * Do NOT write a timeline or history lesson.
+        * Keep the tone warm and neutral, never brochure-like.
+
+        Rules for visitInfo:
+        * Explain what a traveler can visit or experience here.
+        * Cover main areas, viewpoints, or experiences when relevant.
+        * Mention when it is usually better to visit in general terms.
+        * Say if booking is typically useful.
+        * Do NOT invent exact current ticket prices or opening hours.
+        * If unsure about practical details, say so briefly and stay useful.
+        * Keep it concise: about 80-120 words.
+
+        Style rules:
+        * No markdown.
+        * No explanation outside JSON.
+        * No code fences.
+        * Never start with: "Wow!", "What a view!", "Can you believe...", "When I look at...", "I always think...", "You're looking at..."
+        * Write history and visitInfo in \(responseLanguage).
+        """
+    }
+
+    static func nearbyPlacesPrompt(
+        place: PlaceRecognitionResult,
+        location: PhotoLocationContext?,
+        responseLanguage: String
+    ) -> String {
+        var prompt = """
+        You are an excellent local guide helping a traveler choose where to go next.
+
+        Current place:
+        \(place.placeName)
+        \(place.city), \(place.country)
+        """
+
+        if let location {
+            prompt += """
+
+
+        Traveler coordinates for nearby suggestions:
+        Latitude: \(location.latitude)
+        Longitude: \(location.longitude)
+
+        Prefer places that are realistically near these coordinates.
+        """
+        } else {
+            prompt += """
+
+
+        No precise coordinates are available.
+        Suggest well-known nearby places around \(place.placeName) in \(place.city).
+        """
+        }
+
+        prompt += """
+
+
+        Return the response in \(responseLanguage).
+
+        Return ONLY valid JSON in exactly this format:
+
+        {
+        "places": [
+        {
+        "name": "",
+        "distanceHint": "",
+        "whyVisit": ""
+        },
+        {
+        "name": "",
+        "distanceHint": "",
+        "whyVisit": ""
+        },
+        {
+        "name": "",
+        "distanceHint": "",
+        "whyVisit": ""
+        }
+        ]
+        }
+
+        Rules:
+        * Return exactly three places.
+        * Do not include \(place.placeName) itself.
+        * distanceHint should be a short rough estimate such as "5 min walk" or "about 1 km".
+        * whyVisit must be one short concrete sentence.
+        * Prefer real nearby attractions a traveler would enjoy after visiting \(place.placeName).
+        * No markdown.
+        * No explanation outside JSON.
+        * No code fences.
+        * Write all text fields in \(responseLanguage).
         """
 
         return prompt

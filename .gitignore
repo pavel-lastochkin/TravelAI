@@ -5,5 +5,8 @@ Secrets.xcconfig
 **/xcuserdata/
 *.xcuserstate
 
+# Local build artifacts
+.derivedData/
+
 # macOS
 .DS_Store
