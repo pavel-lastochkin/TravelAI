@@ -1,5 +1,6 @@
 # API keys — never commit
 Secrets.xcconfig
+backend/.env
 
 # Xcode user-specific files
 **/xcuserdata/
@@ -7,6 +8,14 @@ Secrets.xcconfig
 
 # Local build artifacts
 .derivedData/
+
+# Python backend
+backend/.venv/
+backend/.deps/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/.pytest_cache/
+backend/*.egg-info/
 
 # macOS
 .DS_Store

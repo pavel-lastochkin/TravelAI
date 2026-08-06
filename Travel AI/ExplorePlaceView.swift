@@ -225,7 +225,7 @@ struct ExplorePlaceView: View {
             #endif
 
             do {
-                let result = try await analyzePlace(
+                let result = try await BackendAPIClient.analyzePlace(
                     image: previewImage,
                     location: photoLocationContext,
                     responseLanguage: appSettings.resolvedAIResponseLanguageName
@@ -262,8 +262,9 @@ struct ExplorePlaceView: View {
 
         Task {
             do {
-                let details = try await fetchPlaceDetails(
+                let details = try await BackendAPIClient.fetchPlaceDetails(
                     place: place,
+                    location: photoLocationContext,
                     responseLanguage: appSettings.resolvedAIResponseLanguageName
                 )
                 guard detailsRequestID == requestID else { return }
@@ -291,7 +292,7 @@ struct ExplorePlaceView: View {
 
         Task {
             do {
-                let nearby = try await fetchNearbyPlaces(
+                let nearby = try await BackendAPIClient.fetchNearbyPlaces(
                     place: recognitionResult,
                     location: photoLocationContext,
                     responseLanguage: appSettings.resolvedAIResponseLanguageName

@@ -59,14 +59,31 @@ Requested only when the user opens "See nearby".
 
 ## Services
 
-### GeminiService
+### GeminiService (legacy direct path)
 
-* Handles all communication with Gemini API
-* `analyzePlace` → `PlaceRecognitionResult`
-* `fetchPlaceDetails` → `PlaceDetailContent`
-* `fetchNearbyPlaces` → `NearbyPlacesResult`
+* Previous iOS path that called Gemini directly
+* Kept temporarily; Explore screen now uses `BackendAPIClient`
 
-Prompts are centralized in `PromptBuilder`.
+### BackendAPIClient (current iOS path)
+
+* Talks to local/remote Travel AI backend
+* `analyzePlace` → `POST /v1/places/analyze`
+* `fetchPlaceDetails` → `POST /v1/places/details`
+* `fetchNearbyPlaces` → `POST /v1/places/nearby`
+* Debug base URL defaults to `http://127.0.0.1:8000` for Simulator
+
+### Backend API (MVP scaffold)
+
+Located in `/backend`.
+
+* FastAPI service that owns prompts, provider keys, and model routing
+* Target hosting: Railway EU West (Amsterdam)
+* Endpoints:
+  * `GET /health`
+  * `POST /v1/places/analyze`
+  * `POST /v1/places/details`
+  * `POST /v1/places/nearby`
+* Provider interface allows swapping Gemini later without changing iOS contracts
 
 ---
 
