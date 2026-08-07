@@ -2,10 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>GEMINI_API_KEY</key>
-	<string>$(GEMINI_API_KEY)</string>
-	<key>BACKEND_BASE_URL</key>
-	<string>$(BACKEND_BASE_URL)</string>
+	<key>BACKEND_HOST</key>
+	<string>$(BACKEND_HOST)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Travel AI needs camera access to take photos of places.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

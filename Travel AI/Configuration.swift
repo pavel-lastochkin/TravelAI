@@ -9,34 +9,44 @@ import Foundation
 
 enum Configuration {
     /// Backend API base URL without trailing slash.
-    /// Priority:
-    /// 1. `BACKEND_BASE_URL` from Secrets.xcconfig / Info.plist
-    /// 2. Simulator localhost fallback
+    ///
+    /// Prefer `BACKEND_HOST` in Secrets.xcconfig (host only, no https://).
+    /// That avoids xcconfig treating `//` as a comment and breaking TLS URLs.
     static var backendBaseURL: String {
-        if let configured = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String {
-            let trimmed = configured
+        if let host = Bundle.main.object(forInfoDictionaryKey: "BACKEND_HOST") as? String {
+            let cleaned = host
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            if !trimmed.isEmpty,
-               !trimmed.hasPrefix("$("),
-               trimmed != "YOUR_BACKEND_BASE_URL_HERE" {
+            if !cleaned.isEmpty,
+               !cleaned.hasPrefix("$("),
+               cleaned != "YOUR_BACKEND_HOST_HERE" {
+                let url = "https://\(cleaned)"
+                #if DEBUG
+                print("Configuration.backendBaseURL → \(url)")
+                #endif
+                return url
+            }
+        }
+
+        // Legacy fallback if an old full URL key is still present.
+        if let configured = Bundle.main.object(forInfoDictionaryKey: "BACKEND_BASE_URL") as? String {
+            var trimmed = configured.trimmingCharacters(in: .whitespacesAndNewlines)
+            while trimmed.hasSuffix("/") {
+                trimmed.removeLast()
+            }
+            if trimmed.hasPrefix("https://") || trimmed.hasPrefix("http://"),
+               !trimmed.contains("$(") {
+                #if DEBUG
+                print("Configuration.backendBaseURL (legacy) → \(trimmed)")
+                #endif
                 return trimmed
             }
         }
 
-        #if targetEnvironment(simulator)
-        return "http://127.0.0.1:8000"
-        #else
-        return "http://127.0.0.1:8000"
+        let localhost = "http://127.0.0.1:8000"
+        #if DEBUG
+        print("Configuration.backendBaseURL → \(localhost) (localhost fallback)")
         #endif
-    }
-
-    static var geminiAPIKey: String {
-        guard let key = Bundle.main.object(forInfoDictionaryKey: "GEMINI_API_KEY") as? String,
-              !key.isEmpty else {
-            print("Configuration: GEMINI_API_KEY is missing or empty. Add your key to Secrets.xcconfig and clean build.")
-            return ""
-        }
-        return key
+        return localhost
     }
 }

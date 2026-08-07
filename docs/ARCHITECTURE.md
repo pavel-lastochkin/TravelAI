@@ -59,25 +59,22 @@ Requested only when the user opens "See nearby".
 
 ## Services
 
-### GeminiService (legacy direct path)
-
-* Previous iOS path that called Gemini directly
-* Kept temporarily; Explore screen now uses `BackendAPIClient`
-
 ### BackendAPIClient (current iOS path)
 
-* Talks to local/remote Travel AI backend
+* Talks to Travel AI backend
 * `analyzePlace` → `POST /v1/places/analyze`
 * `fetchPlaceDetails` → `POST /v1/places/details`
 * `fetchNearbyPlaces` → `POST /v1/places/nearby`
-* Debug base URL defaults to `http://127.0.0.1:8000` for Simulator
+* Base URL from `BACKEND_BASE_URL` in Secrets.xcconfig, otherwise Simulator localhost
 
-### Backend API (MVP scaffold)
+Gemini API key is **not** stored in the iOS app. It lives only in backend `.env` / Railway Variables.
+
+### Backend API
 
 Located in `/backend`.
 
 * FastAPI service that owns prompts, provider keys, and model routing
-* Target hosting: Railway EU West (Amsterdam)
+* Hosting: Railway
 * Endpoints:
   * `GET /health`
   * `POST /v1/places/analyze`

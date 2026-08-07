@@ -96,11 +96,13 @@ Backend must be on GitHub first (`backend/` folder committed and pushed).
 7. Wait for deploy success, then open:
    - `https://YOUR_DOMAIN/health`
    - `https://YOUR_DOMAIN/docs`
-8. Put the same HTTPS URL into local `Secrets.xcconfig`:
+8. Put the Railway hostname into local `Secrets.xcconfig` (host only, no https://):
 
 ```text
-BACKEND_BASE_URL = https://YOUR_DOMAIN
+BACKEND_HOST = YOUR_DOMAIN.up.railway.app
 ```
+
+The app will build `https://…` in code. Do not put `https://` into xcconfig — `//` breaks the value.
 
 9. In Xcode: Clean Build Folder, then run on the physical iPhone.
 

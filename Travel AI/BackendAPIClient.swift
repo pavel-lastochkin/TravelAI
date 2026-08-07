@@ -172,7 +172,10 @@ enum BackendAPIClient {
     }
 
     private static func endpoint(_ path: String) throws -> URL {
-        let base = Configuration.backendBaseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        var base = Configuration.backendBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") {
+            base.removeLast()
+        }
         guard let url = URL(string: base + path) else {
             throw BackendAPIError.invalidURL
         }
